@@ -1,459 +1,493 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>Sistema de Ruteo Optimizado</title>
-  <link rel="stylesheet" href="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.css">
-  <script src="https://api.mqcdn.com/sdk/mapquest-js/v1.3.2/mapquest.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    /* Estilos mejorados y simplificados */
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-    #control-panel {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 1000;
-      width: 350px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .input-group {
-      margin-bottom: 15px;
-    }
-    .input-group label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-      color: #333;
-    }
-    .input-group input {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .format-hint {
-      font-size: 0.8em;
-      color: #666;
-      margin-top: 5px;
-    }
-    .transport-modes {
-      display: flex;
-      gap: 10px;
-      margin: 15px 0;
-    }
-    .transport-mode {
-      flex: 1;
-      text-align: center;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .transport-mode.active {
-      background: #0066cc;
-      color: white;
-      border-color: #0066cc;
-    }
-    .transport-mode i {
-      display: block;
-      font-size: 1.5em;
-      margin-bottom: 5px;
-    }
-    .checkbox-option {
-      margin: 10px 0;
-      display: flex;
-      align-items: center;
-    }
-    .checkbox-option input {
-      margin-right: 8px;
-    }
-    .btn {
-      background: #0066cc;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-      font-weight: bold;
-      margin: 10px 0;
-      transition: background 0.2s;
-    }
-    .btn:hover {
-      background: #004d99;
-    }
-    .btn-secondary {
-      background: #6c757d;
-    }
-    .btn-secondary:hover {
-      background: #5a6268;
-    }
-    .error-box {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 10px;
-      border-radius: 4px;
-      margin: 10px 0;
-      border-left: 4px solid #dc3545;
-    }
-    .error-box h4 {
-      margin-top: 0;
-    }
-    .waypoint-item {
-      display: flex;
-      gap: 5px;
-      margin-bottom: 5px;
-    }
-    .waypoint-item input {
-      flex: 1;
-    }
-    .waypoint-item button {
-      background: #dc3545;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 0 10px;
-      cursor: pointer;
-    }
-    #results {
-      margin-top: 15px;
-    }
-    .route-info {
-      background: #e7f5ff;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-    }
-    .route-steps {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    .route-steps ol {
-      padding-left: 20px;
-    }
-    .route-steps li {
-      margin-bottom: 5px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ruta Preciso</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #app {
+            display: flex;
+            height: 100%;
+        }
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        #sidebar {
+            width: 400px;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            color: var(--primary);
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 10px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input:focus {
+            border-color: var(--secondary);
+            outline: none;
+        }
+        .waypoint-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .waypoint-item input {
+            flex: 1;
+        }
+        .remove-waypoint {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 0 12px;
+            cursor: pointer;
+        }
+        .transport-options {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .transport-option {
+            flex: 1;
+            text-align: center;
+            padding: 15px 5px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .transport-option:hover {
+            border-color: var(--secondary);
+        }
+        .transport-option.active {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+        }
+        .transport-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .options {
+            margin: 20px 0;
+        }
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .checkbox-option input {
+            width: auto;
+            margin-right: 10px;
+        }
+        .btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .route-summary {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .route-summary h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .summary-label {
+            font-weight: 600;
+        }
+        .directions {
+            margin-top: 20px;
+        }
+        .direction-step {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .error-box {
+            background: #fee;
+            border-left: 4px solid var(--danger);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            color: var(--danger);
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .timestamp {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-align: right;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div id="control-panel">
-    <h2 style="margin-top: 0; color: #0066cc;">Ruta Optimizada</h2>
-    
-    <div class="input-group">
-      <label for="origen">Origen:</label>
-      <input id="origen" placeholder="Ej: 19.4326,-99.1332 o dirección">
-      <p class="format-hint">Usa formato: latitud,longitud</p>
+    <div id="app">
+        <div id="map"></div>
+        
+        <div id="sidebar">
+            <div class="header">
+                <h1><i class="fas fa-route"></i> Ruta Precisión MX</h1>
+                <p>Sistema de cálculo de rutas con datos reales</p>
+            </div>
+            
+            <div class="input-group">
+                <label for="origin">Origen:</label>
+                <input id="origin" placeholder="Ej: 19.4326,-99.1332 o 'El Deni'">
+            </div>
+            
+            <div class="input-group">
+                <label for="destination">Destino:</label>
+                <input id="destination" placeholder="Ej: 16.8531,-99.8237 o 'Acapulco'">
+            </div>
+            
+            <div class="input-group">
+                <label>Puntos Intermedios:</label>
+                <div id="waypoints-container"></div>
+                <button id="add-waypoint" class="btn" style="background: #7f8c8d;">
+                    <i class="fas fa-plus"></i> Agregar punto
+                </button>
+            </div>
+            
+            <div class="transport-options">
+                <div class="transport-option active" data-mode="automovil" onclick="selectTransport(this)">
+                    <div class="transport-icon"><i class="fas fa-car"></i></div>
+                    <div>Automóvil</div>
+                </div>
+                <div class="transport-option" data-mode="motocicleta" onclick="selectTransport(this)">
+                    <div class="transport-icon"><i class="fas fa-motorcycle"></i></div>
+                    <div>Motocicleta</div>
+                </div>
+                <div class="transport-option" data-mode="caminando" onclick="selectTransport(this)">
+                    <div class="transport-icon"><i class="fas fa-walking"></i></div>
+                    <div>Caminando</div>
+                </div>
+            </div>
+            
+            <div class="options">
+                <div class="checkbox-option">
+                    <input type="checkbox" id="avoid-tolls">
+                    <label for="avoid-tolls">Evitar casetas de peaje</label>
+                </div>
+            </div>
+            
+            <button id="calculate-btn" class="btn" onclick="calculateRoute()">
+                <i class="fas fa-calculator"></i> Calcular Ruta
+            </button>
+            
+            <div id="error-container" class="error-box" style="display: none;">
+                <h3><i class="fas fa-exclamation-triangle"></i> Error</h3>
+                <p id="error-message"></p>
+            </div>
+            
+            <div id="results" class="results"></div>
+        </div>
     </div>
-    
-    <div class="input-group">
-      <label for="destino">Destino:</label>
-      <input id="destino" placeholder="Ej: 19.4326,-99.1332 o dirección">
-    </div>
-    
-    <div class="input-group">
-      <label>Puntos intermedios:</label>
-      <div id="waypoints-container"></div>
-      <button class="btn-secondary" onclick="addWaypoint()">
-        <i class="fas fa-plus"></i> Agregar punto
-      </button>
-    </div>
-    
-    <div class="transport-modes">
-      <div class="transport-mode active" data-mode="car" onclick="setTransportMode('car')">
-        <i class="fas fa-car"></i>
-        <span>Coche</span>
-      </div>
-      <div class="transport-mode" data-mode="motorcycle" onclick="setTransportMode('motorcycle')">
-        <i class="fas fa-motorcycle"></i>
-        <span>Moto</span>
-      </div>
-      <div class="transport-mode" data-mode="pedestrian" onclick="setTransportMode('pedestrian')">
-        <i class="fas fa-walking"></i>
-        <span>Caminando</span>
-      </div>
-    </div>
-    
-    <h3>Opciones de ruta:</h3>
-    <div class="checkbox-option">
-      <input type="checkbox" id="avoid-tolls">
-      <label for="avoid-tolls">Evitar casetas de peaje</label>
-    </div>
-    
-    <button class="btn" onclick="calculateRoute()">
-      <i class="fas fa-route"></i> Calcular Ruta Óptima
-    </button>
-    
-    <div id="error-container" class="error-box" style="display: none;">
-      <h4>Error</h4>
-      <p id="error-message"></p>
-      <h5>Recomendaciones:</h5>
-      <ul id="suggestions"></ul>
-    </div>
-    
-    <div id="results"></div>
-  </div>
 
-  <script>
-    // Variables globales
-    let map;
-    let currentRouteLayer = null;
-    let transportMode = 'car';
-    let markers = {
-      origin: null,
-      destination: null,
-      waypoints: []
-    };
-    
-    // Inicialización del mapa
-    function initMap() {
-      try {
-        L.mapquest.key = '{{ mapquest_key }}';
+    <script>
+        // Variables globales
+        let map;
+        let routeLayer;
+        let markers = [];
+        let selectedMode = 'automovil';
         
-        map = L.mapquest.map('map', {
-          center: [19.4326, -99.1332],
-          layers: L.mapquest.tileLayer('map'),
-          zoom: 12
-        });
-        
-        // Evento de clic en el mapa
-        map.on('click', function(e) {
-          const coords = `${e.latlng.lat.toFixed(6)},${e.latlng.lng.toFixed(6)}`;
-          const activeInput = document.querySelector('input.active');
-          if (activeInput) {
-            activeInput.value = coords;
-          }
-        });
-        
-      } catch (error) {
-        console.error('Error al inicializar el mapa:', error);
-        showError('Error al cargar el mapa. Recarga la página.');
-      }
-    }
-    
-    // Manejo de waypoints
-    function addWaypoint() {
-      const container = document.getElementById('waypoints-container');
-      const waypointId = `waypoint-${Date.now()}`;
-      
-      const waypointDiv = document.createElement('div');
-      waypointDiv.className = 'waypoint-item';
-      waypointDiv.innerHTML = `
-        <input type="text" placeholder="Coordenadas o dirección" class="waypoint-input">
-        <button onclick="removeWaypoint(this)"><i class="fas fa-times"></i></button>
-      `;
-      
-      container.appendChild(waypointDiv);
-    }
-    
-    function removeWaypoint(button) {
-      const waypointItem = button.parentElement;
-      waypointItem.remove();
-    }
-    
-    function getWaypoints() {
-      const inputs = document.querySelectorAll('.waypoint-input');
-      return Array.from(inputs).map(input => input.value.trim()).filter(Boolean);
-    }
-    
-    // Configuración de modo de transporte
-    function setTransportMode(mode) {
-      transportMode = mode;
-      document.querySelectorAll('.transport-mode').forEach(el => {
-        el.classList.toggle('active', el.dataset.mode === mode);
-      });
-    }
-    
-    // Cálculo de ruta
-    async function calculateRoute() {
-      const origen = document.getElementById('origen').value.trim();
-      const destino = document.getElementById('destino').value.trim();
-      const waypoints = getWaypoints();
-      const avoidTolls = document.getElementById('avoid-tolls').checked;
-      
-      // Validación básica
-      if (!origen || !destino) {
-        showError('Debes especificar origen y destino', [
-          'Verifica que ambos campos estén completos',
-          'Puedes hacer clic en el mapa para establecer ubicaciones'
-        ]);
-        return;
-      }
-      
-      // Mostrar carga
-      document.getElementById('results').innerHTML = '<p>Calculando ruta óptima...</p>';
-      hideError();
-      
-      try {
-        const response = await fetch('/ruta', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            origen: origen,
-            destino: destino,
-            waypoints: waypoints,
-            routeType: transportMode === 'pedestrian' ? 'pedestrian' : 'fastest',
-            avoid_tolls: avoidTolls
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Error desconocido del servidor');
+        // Inicialización del mapa
+        function initMap() {
+            map = L.map('map').setView([19.4326, -99.1332], 6);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            
+            // Agregar primer waypoint por defecto
+            addWaypoint();
         }
         
-        displayRouteResults(data);
-        drawRouteOnMap(data);
+        // Manejo de waypoints
+        function addWaypoint() {
+            const container = document.getElementById('waypoints-container');
+            const waypointDiv = document.createElement('div');
+            waypointDiv.className = 'waypoint-item';
+            waypointDiv.innerHTML = `
+                <input type="text" class="waypoint-input" placeholder="Coordenadas o dirección">
+                <button class="remove-waypoint" onclick="removeWaypoint(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.appendChild(waypointDiv);
+        }
         
-      } catch (error) {
-        console.error('Error al calcular ruta:', error);
-        showError(error.message, [
-          'Verifica que las ubicaciones son correctas',
-          'Usa el formato correcto para coordenadas',
-          'Intenta con menos puntos intermedios',
-          'Revisa tu conexión a internet'
-        ]);
-      }
-    }
-    
-    // Mostrar resultados
-    function displayRouteResults(data) {
-      const resultsDiv = document.getElementById('results');
-      
-      // Información básica de la ruta
-      let html = `
-        <div class="route-info">
-          <h3>Resumen de Ruta</h3>
-          <p><strong>Distancia:</strong> ${data.distance_km} km</p>
-          <p><strong>Tiempo estimado:</strong> ${data.time_minutes} minutos</p>
-          <p><strong>Modo:</strong> ${transportMode === 'car' ? 'Coche' : transportMode === 'motorcycle' ? 'Moto' : 'Caminando'}</p>
-        </div>
+        function removeWaypoint(button) {
+            button.parentElement.remove();
+        }
         
-        <h3>Ruta Óptima:</h3>
-        <ol>
-          <li><strong>Origen:</strong> ${data.optimal_route[0]}</li>
-      `;
-      
-      // Waypoints intermedios
-      if (data.optimal_route.length > 2) {
-        data.optimal_route.slice(1, -1).forEach((wp, i) => {
-          html += `<li><strong>Punto ${i+1}:</strong> ${wp}</li>`;
+        function getWaypoints() {
+            const inputs = document.querySelectorAll('.waypoint-input');
+            return Array.from(inputs).map(input => input.value.trim()).filter(Boolean);
+        }
+        
+        // Selección de modo de transporte
+        function selectTransport(element) {
+            document.querySelectorAll('.transport-option').forEach(el => {
+                el.classList.remove('active');
+            });
+            element.classList.add('active');
+            selectedMode = element.dataset.mode;
+        }
+        
+        // Cálculo de ruta
+        async function calculateRoute() {
+            const origin = document.getElementById('origin').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            const waypoints = getWaypoints();
+            const avoidTolls = document.getElementById('avoid-tolls').checked;
+            
+            // Validación básica
+            if (!origin || !destination) {
+                showError('Debes especificar origen y destino');
+                return;
+            }
+            
+            // Mostrar estado de carga
+            const btn = document.getElementById('calculate-btn');
+            btn.innerHTML = '<span class="loading"></span> Calculando...';
+            btn.disabled = true;
+            
+            // Limpiar resultados anteriores
+            document.getElementById('error-container').style.display = 'none';
+            document.getElementById('results').innerHTML = '';
+            clearMap();
+            
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        origin: origin,
+                        destination: destination,
+                        waypoints: waypoints,
+                        mode: selectedMode,
+                        avoid_tolls: avoidTolls
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error al calcular la ruta');
+                }
+                
+                displayResults(data);
+                drawRoute(data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message);
+            } finally {
+                btn.innerHTML = '<i class="fas fa-calculator"></i> Calcular Ruta';
+                btn.disabled = false;
+            }
+        }
+        
+        // Mostrar resultados
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            let fuelHtml = '';
+            if (selectedMode !== 'caminando') {
+                fuelHtml = `
+                    <div class="summary-item">
+                        <span class="summary-label">Combustible usado:</span>
+                        <span>${data.fuel_used} litros (${selectedMode === 'automovil' ? 'Gasolina' : 'Gasolina'})</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Costo estimado:</span>
+                        <span>$${data.fuel_cost} MXN</span>
+                    </div>
+                `;
+            }
+            
+            let tollHtml = '';
+            if (selectedMode !== 'caminando' && data.toll_distance > 0) {
+                tollHtml = `
+                    <div class="summary-item">
+                        <span class="summary-label">Distancia en casetas:</span>
+                        <span>${data.toll_distance} km</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Costo de peajes:</span>
+                        <span>$${data.toll_cost} MXN</span>
+                    </div>
+                `;
+            }
+            
+            resultsDiv.innerHTML = `
+                <div class="route-summary">
+                    <h3><i class="fas fa-info-circle"></i> Resumen de Ruta</h3>
+                    <div class="summary-item">
+                        <span class="summary-label">Distancia:</span>
+                        <span>${data.distance} km</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Tiempo estimado:</span>
+                        <span>${Math.floor(data.time / 60)}h ${Math.round(data.time % 60)}min</span>
+                    </div>
+                    ${fuelHtml}
+                    ${tollHtml}
+                    <div class="timestamp">
+                        <i class="fas fa-sync-alt"></i> Actualizado: ${data.timestamp}
+                    </div>
+                </div>
+                
+                <div class="directions">
+                    <h3><i class="fas fa-map-signs"></i> Indicaciones</h3>
+                    ${data.directions.map((step, i) => `
+                        <div class="direction-step">
+                            <strong>${i + 1}.</strong> ${step.replace(/<[^>]*>/g, '')}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Dibujar ruta en el mapa
+        function drawRoute(data) {
+            // Limpiar mapa
+            clearMap();
+            
+            // Convertir geometría a coordenadas
+            let latLngs = [];
+            if (Array.isArray(data.geometry)) {
+                // Formato MapQuest [lat, lng, lat, lng,...]
+                for (let i = 0; i < data.geometry.length; i += 2) {
+                    latLngs.push([data.geometry[i], data.geometry[i + 1]]);
+                }
+            } else if (data.geometry && data.geometry.coordinates) {
+                // Formato GeoJSON [lng, lat]
+                latLngs = data.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            }
+            
+            // Dibujar ruta
+            if (latLngs.length > 0) {
+                routeLayer = L.polyline(latLngs, {
+                    color: '#3498db',
+                    weight: 5,
+                    opacity: 0.7
+                }).addTo(map);
+                
+                // Ajustar vista del mapa
+                map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+            }
+        }
+        
+        // Limpiar mapa
+        function clearMap() {
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+            }
+            
+            markers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            markers = [];
+        }
+        
+        // Mostrar error
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            document.getElementById('error-message').textContent = message;
+            errorContainer.style.display = 'block';
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            
+            // Configurar botón para agregar waypoints
+            document.getElementById('add-waypoint').addEventListener('click', addWaypoint);
         });
-      }
-      
-      html += `
-          <li><strong>Destino:</strong> ${data.optimal_route[data.optimal_route.length-1]}</li>
-        </ol>
-        
-        <h3>Indicaciones:</h3>
-        <div class="route-steps">
-          <ol>
-            ${data.directions.map(dir => `<li>${dir}</li>`).join('')}
-          </ol>
-        </div>
-      `;
-      
-      resultsDiv.innerHTML = html;
-    }
-    
-    // Dibujar ruta en el mapa
-    function drawRouteOnMap(data) {
-      // Limpiar ruta anterior
-      if (currentRouteLayer) {
-        map.removeLayer(currentRouteLayer);
-      }
-      Object.values(markers).flat().forEach(marker => {
-        if (marker) map.removeLayer(marker);
-      });
-      markers = { origin: null, destination: null, waypoints: [] };
-      
-      // Convertir shapePoints a latLngs
-      const latLngs = [];
-      for (let i = 0; i < data.shape.length; i += 2) {
-        latLngs.push([data.shape[i], data.shape[i+1]]);
-      }
-      
-      // Dibujar nueva ruta
-      currentRouteLayer = L.polyline(latLngs, {
-        color: transportMode === 'pedestrian' ? '#28a745' : '#007bff',
-        weight: 5,
-        opacity: 0.7
-      }).addTo(map);
-      
-      // Añadir marcadores
-      markers.origin = L.marker(data.start_lat_lng, {
-        icon: L.mapquest.icons.marker({
-          primaryColor: '#007bff',
-          secondaryColor: '#007bff',
-          symbol: 'A'
-        })
-      }).addTo(map).bindPopup("<b>Origen</b>");
-      
-      markers.destination = L.marker(data.end_lat_lng, {
-        icon: L.mapquest.icons.marker({
-          primaryColor: '#dc3545',
-          secondaryColor: '#dc3545',
-          symbol: 'B'
-        })
-      }).addTo(map).bindPopup("<b>Destino</b>");
-      
-      // Ajustar vista del mapa
-      map.fitBounds(currentRouteLayer.getBounds(), { padding: [50, 50] });
-    }
-    
-    // Manejo de errores
-    function showError(message, suggestions = []) {
-      const errorContainer = document.getElementById('error-container');
-      const errorMessage = document.getElementById('error-message');
-      const suggestionsList = document.getElementById('suggestions');
-      
-      errorMessage.textContent = message;
-      suggestionsList.innerHTML = '';
-      
-      suggestions.forEach(suggestion => {
-        const li = document.createElement('li');
-        li.textContent = suggestion;
-        suggestionsList.appendChild(li);
-      });
-      
-      errorContainer.style.display = 'block';
-    }
-    
-    function hideError() {
-      document.getElementById('error-container').style.display = 'none';
-    }
-    
-    // Inicialización
-    document.addEventListener('DOMContentLoaded', function() {
-      initMap();
-      
-      // Marcar inputs activos al hacer focus
-      document.querySelectorAll('input').forEach(input => {
-        input.addEventListener('focus', function() {
-          document.querySelectorAll('input').forEach(i => i.classList.remove('active'));
-          this.classList.add('active');
-        });
-      });
-    });
-  </script>
+    </script>
 </body>
 </html>

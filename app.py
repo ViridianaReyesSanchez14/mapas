@@ -3,123 +3,172 @@ import os
 import requests
 from dotenv import load_dotenv
 import re
+import socket
+from datetime import datetime
 
 load_dotenv()
 
 app = Flask(__name__)
 MAPQUEST_KEY = os.getenv('MAPQUEST_KEY')
 
-class RouteOptimizer:
+class RouteCalculator:
     def __init__(self):
-        self.cache = {}
-    
-    def get_route_data(self, origin, destination, waypoints=None, avoid_tolls=False, route_type='fastest'):
-        """Obtiene datos de ruta de MapQuest"""
+        self.session = requests.Session()
+        self.timeout = 20
+        self.max_retries = 3
+
+    def validate_location(self, location):
+        """Valida si la ubicación es coordenada o dirección"""
+        coord_pattern = r'^-?\d{1,3}[\.\,]\d+\s*[\,\.]\s*-?\d{1,3}[\.\,]\d+$'
+        
+        if re.match(coord_pattern, location.replace(' ', '')):
+            normalized = location.replace(' ', '').replace('.', ',').replace(',,', ',')
+            try:
+                lat, lon = normalized.split(',')[:2]
+                lat = float(lat)
+                lon = float(lon)
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return {'valid': True, 'type': 'coordinate', 'normalized': f"{lat},{lon}"}
+            except:
+                pass
+        
+        if len(location) >= 3:
+            return {'valid': True, 'type': 'address'}
+        
+        return {'valid': False, 'error': 'Formato inválido'}
+
+    def get_route(self, origin, destination, waypoints=None, vehicle='automovil', avoid_tolls=False):
+        """Obtiene ruta de MapQuest con manejo robusto de errores"""
         params = {
             'key': MAPQUEST_KEY,
-            'from': origin,
-            'to': destination,
-            'routeType': route_type,
+            'routeType': 'fastest',
             'unit': 'k',
             'narrativeType': 'text',
             'locale': 'es_MX',
             'fullShape': True,
-            'generalize': 0
+            'generalize': 0,
+            'from': origin,
+            'to': destination
         }
-        
+
         if avoid_tolls:
             params['tollRoads'] = 'false'
-        
+
         if waypoints:
             for i, wp in enumerate(waypoints, 1):
                 params[f'to{i}'] = wp
-        
-        try:
-            response = requests.get(
-                'https://www.mapquestapi.com/directions/v2/route',
-                params=params,
-                timeout=15
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Error MapQuest: {str(e)}")
-            return None
 
-optimizer = RouteOptimizer()
+        for attempt in range(self.max_retries):
+            try:
+                response = self.session.get(
+                    'https://www.mapquestapi.com/directions/v2/route',
+                    params=params,
+                    timeout=self.timeout
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('info', {}).get('statuscode') == 0:
+                        return self._process_route_data(data, vehicle)
+                    
+                    error_msg = data.get('info', {}).get('messages', ['Error desconocido'])[0]
+                    return {'error': f'MapQuest: {error_msg}'}
+                
+                return {'error': f'Error HTTP {response.status_code}'}
 
-def validate_coordinates(coord_str):
-    """Valida y normaliza coordenadas"""
-    if not coord_str or not isinstance(coord_str, str):
-        return None
-    
-    # Acepta formatos: "lat,lon", "lat_lon", "lat, lon"
-    coord_str = coord_str.replace('_', ',').replace(' ', '')
-    
-    try:
-        lat, lon = coord_str.split(',')
-        lat = float(lat)
-        lon = float(lon)
+            except requests.exceptions.Timeout:
+                if attempt == self.max_retries - 1:
+                    return {'error': 'Timeout: El servidor no respondió a tiempo'}
+            except requests.exceptions.RequestException as e:
+                if attempt == self.max_retries - 1:
+                    return {'error': f'Error de conexión: {str(e)}'}
+            except Exception as e:
+                if attempt == self.max_retries - 1:
+                    return {'error': f'Error interno: {str(e)}'}
+
+        return {'error': 'No se pudo calcular la ruta después de varios intentos'}
+
+    def _process_route_data(self, data, vehicle):
+        """Procesa los datos de la ruta para incluir cálculo de gasolina"""
+        route = data['route']
+        distance = route['distance']  # km
+        time = route['time'] / 60  # minutos
         
-        if -90 <= lat <= 90 and -180 <= lon <= 180:
-            return f"{lat},{lon}"
-        return None
-    except ValueError:
-        return None
+        efficiency = {
+            'automovil': 12,
+            'motocicleta': 25,
+            'caminando': 0
+        }.get(vehicle, 12)
+        
+        fuel_used = distance / efficiency if efficiency > 0 else 0
+        fuel_cost = fuel_used * 24.50
+        
+        return {
+            'distance': round(distance, 2),
+            'time': round(time, 1),
+            'fuel_used': round(fuel_used, 2),
+            'fuel_cost': round(fuel_cost, 2),
+            'directions': [m['narrative'] for m in route['legs'][0]['maneuvers']],
+            'geometry': route['shape']['shapePoints'],  # Cambiado a 'geometry'
+            'start_coords': [
+                route['locations'][0]['latLng']['lat'],
+                route['locations'][0]['latLng']['lng']
+            ],
+            'end_coords': [
+                route['locations'][-1]['latLng']['lat'],
+                route['locations'][-1]['latLng']['lng']
+            ],
+            'toll_distance': route.get('tollRoadDistance', 0),
+            'toll_cost': round(route.get('tollRoadDistance', 0) * 5, 2),
+            'timestamp': datetime.now().strftime('%d/%m/%Y %H:%M')
+        }
+
+route_calculator = RouteCalculator()
 
 @app.route('/')
 def index():
     if not MAPQUEST_KEY:
         return render_template('error.html', error="API Key no configurada")
-    return render_template('index.html', mapquest_key=MAPQUEST_KEY)
+    return render_template('index.html')
 
-@app.route('/ruta', methods=['POST'])
-def calcular_ruta():
-    try:
-        data = request.get_json()
-        
-        # Validar y normalizar entradas
-        origen = validate_coordinates(data.get('origen'))
-        destino = validate_coordinates(data.get('destino'))
-        waypoints = [wp for wp in (validate_coordinates(wp) for wp in data.get('waypoints', [])) if wp]
-        
-        if not origen or not destino:
-            return jsonify({'error': 'Se requieren origen y destino válidos'}), 400
-        
-        # Obtener datos de la ruta
-        route_data = optimizer.get_route_data(
-            origin=origen,
-            destination=destino,
-            waypoints=waypoints,
-            avoid_tolls=data.get('avoid_tolls', False),
-            route_type=data.get('routeType', 'fastest')
-        )
-        
-        if not route_data or route_data.get('info', {}).get('statuscode') != 0:
-            error_msg = route_data.get('info', {}).get('messages', ['Error desconocido de MapQuest'])[0]
-            return jsonify({'error': error_msg}), 400
-        
-        route = route_data.get('route', {})
-        locations = route.get('locations', [])
-        
-        if len(locations) < 2:
-            return jsonify({'error': 'No se pudieron obtener suficientes ubicaciones'}), 400
-        
-        return jsonify({
-            'directions': [m['narrative'] for m in route['legs'][0]['maneuvers']],
-            'distance_km': round(route['distance'], 2),
-            'time_minutes': round(route['time'] / 60, 1),
-            'fuel_used_gal': round(route.get('fuelUsed', 0), 2),
-            'toll_distance_km': round(route.get('tollRoadDistance', 0), 2),
-            'shape': route['shape']['shapePoints'],
-            'start_lat_lng': [locations[0]['latLng']['lat'], locations[0]['latLng']['lng']],
-            'end_lat_lng': [locations[-1]['latLng']['lat'], locations[-1]['latLng']['lng']],
-            'optimal_route': [origen] + waypoints + [destino],
-            'algorithm_used': 'Optimización básica'
-        })
+@app.route('/validate', methods=['POST'])
+def validate():
+    data = request.get_json()
+    location = data.get('location', '').strip()
+    return jsonify(route_calculator.validate_location(location))
 
-    except Exception as e:
-        return jsonify({'error': f'Error interno: {str(e)}'}), 500
+@app.route('/calculate', methods=['POST'])
+def calculate():
+    data = request.get_json()
+    
+    origin = route_calculator.validate_location(data.get('origin', ''))
+    dest = route_calculator.validate_location(data.get('destination', ''))
+    
+    if not origin['valid'] or not dest['valid']:
+        return jsonify({'error': 'Origen o destino inválidos'}), 400
+    
+    waypoints = []
+    for wp in data.get('waypoints', []):
+        validated = route_calculator.validate_location(wp)
+        if validated['valid']:
+            waypoints.append(validated.get('normalized', wp))
+    
+    result = route_calculator.get_route(
+        origin=origin.get('normalized', data.get('origin')),
+        destination=dest.get('normalized', data.get('destination')),
+        waypoints=waypoints,
+        vehicle=data.get('vehicle', 'automovil'),
+        avoid_tolls=data.get('avoid_tolls', False)
+    )
+    
+    if 'error' in result:
+        return jsonify({'error': result['error']}), 400
+    
+    return jsonify(result)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    try:
+        socket.create_connection(("www.google.com", 80))
+        app.run(debug=True)
+    except OSError:
+        print("Error: No hay conexión a internet")
