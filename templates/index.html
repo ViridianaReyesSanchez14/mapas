@@ -347,7 +347,7 @@
                         origin: origin,
                         destination: destination,
                         waypoints: waypoints,
-                        mode: selectedMode,
+                        vehicle: selectedMode,  // Modificado para coincidir con tu API
                         avoid_tolls: avoidTolls
                     })
                 });
@@ -431,7 +431,7 @@
             `;
         }
         
-        // Dibujar ruta en el mapa
+        // Dibujar ruta en el mapa (FUNCIÓN COMPLETAMENTE ACTUALIZADA)
         function drawRoute(data) {
             // Limpiar mapa
             clearMap();
@@ -439,13 +439,9 @@
             // Convertir geometría a coordenadas
             let latLngs = [];
             if (Array.isArray(data.geometry)) {
-                // Formato MapQuest [lat, lng, lat, lng,...]
                 for (let i = 0; i < data.geometry.length; i += 2) {
                     latLngs.push([data.geometry[i], data.geometry[i + 1]]);
                 }
-            } else if (data.geometry && data.geometry.coordinates) {
-                // Formato GeoJSON [lng, lat]
-                latLngs = data.geometry.coordinates.map(coord => [coord[1], coord[0]]);
             }
             
             // Dibujar ruta
@@ -455,6 +451,39 @@
                     weight: 5,
                     opacity: 0.7
                 }).addTo(map);
+                
+                // Agregar marcadores personalizados para inicio y fin
+                if (data.start_coords && data.end_coords) {
+                    // Marcador de inicio (verde)
+                    const startIcon = L.divIcon({
+                        className: 'start-marker',
+                        html: '<i class="fas fa-map-marker-alt" style="color: #27ae60; font-size: 24px;"></i>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24]
+                    });
+                    
+                    const startMarker = L.marker(
+                        [data.start_coords[0], data.start_coords[1]], 
+                        {icon: startIcon}
+                    ).addTo(map)
+                    .bindTooltip("Punto de inicio", {permanent: false, direction: 'top'});
+                    markers.push(startMarker);
+
+                    // Marcador de destino (rojo)
+                    const endIcon = L.divIcon({
+                        className: 'end-marker',
+                        html: '<i class="fas fa-map-marker-alt" style="color: #e74c3c; font-size: 24px;"></i>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24]
+                    });
+                    
+                    const endMarker = L.marker(
+                        [data.end_coords[0], data.end_coords[1]], 
+                        {icon: endIcon}
+                    ).addTo(map)
+                    .bindTooltip("Punto de destino", {permanent: false, direction: 'top'});
+                    markers.push(endMarker);
+                }
                 
                 // Ajustar vista del mapa
                 map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
@@ -488,6 +517,6 @@
             // Configurar botón para agregar waypoints
             document.getElementById('add-waypoint').addEventListener('click', addWaypoint);
         });
-    </script>
+</script>
 </body>
 </html>
